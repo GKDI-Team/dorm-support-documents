@@ -1,0 +1,5 @@
+stateDiagram-v2
+    [*] --> NEW: Resident creates issue
+    NEW --> IN_PROGRESS: REVIEWER
+    IN_PROGRESS --> CLOSED: REVIEWER
+    CLOSED --> [*]

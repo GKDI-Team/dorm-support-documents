@@ -1,0 +1,881 @@
+openapi: "3.0.3"
+info:
+  title: "DormSupport API"
+  version: "1.3.0"
+  description: "API системы заявок в общежитии. 10 публичных операций и 1 внутренняя операция Identity. JSON camelCase; ошибки {code,message}; даты UTC ISO 8601. JWT Bearer действует 3600 секунд. Каждый сервис имеет собственную БД."
+servers:
+  -
+    url: "http://localhost:8080/api/v1"
+    description: "Локальное окружение"
+security:
+  -
+    bearerAuth: []
+tags:
+  -
+    name: "Identity"
+    description: "Учётные записи, активация и проживание"
+  -
+    name: "Issues"
+    description: "Заявки, категории и история статусов"
+  -
+    name: "Internal Identity"
+    description: "Доступен только Issues Service, отсутствует в публичном reverse proxy"
+paths:
+  "/admin/users":
+    post:
+      operationId: "createUser"
+      summary: "Создать пользователя"
+      tags:
+        - "Identity"
+      description: "Только ADMIN. RESIDENT требует roomId, для сотрудников roomId запрещён. User, Resident и ActivationCode создаются одной транзакцией. Код активации действует 24 часа; администратор передаёт его лично."
+      responses:
+        "201":
+          description: "Создано"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/CreatedUser"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "409":
+          "$ref": "#/components/responses/Error409"
+        "500":
+          "$ref": "#/components/responses/Error500"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CreateUserRequest"
+  "/admin/users/{userId}/activation-code":
+    post:
+      operationId: "reissueActivationCode"
+      summary: "Перевыпустить код активации"
+      tags:
+        - "Identity"
+      description: "Только ADMIN, только для ещё не активированной учётной записи. Старый код сразу становится недействительным. Срок нового кода 24 часа. Восстановление пароля активного аккаунта не входит в контракт."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ActivationCode"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "404":
+          "$ref": "#/components/responses/Error404"
+        "409":
+          "$ref": "#/components/responses/Error409"
+        "500":
+          "$ref": "#/components/responses/Error500"
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+            minimum: 1
+            maximum: 9007199254740991
+  "/auth/activate":
+    post:
+      operationId: "activateAccount"
+      summary: "Активировать аккаунт"
+      tags:
+        - "Identity"
+      description: "Публичная операция. Неверный, истёкший или уже использованный код: 400 INVALID_ACTIVATION_CODE. Проверка, запись хеша пароля и погашение кода атомарны."
+      responses:
+        "204":
+          description: "Успешно, без тела ответа"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "429":
+          "$ref": "#/components/responses/Error429"
+        "500":
+          "$ref": "#/components/responses/Error500"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ActivateRequest"
+  "/auth/login":
+    post:
+      operationId: "login"
+      summary: "Войти по логину и паролю"
+      tags:
+        - "Identity"
+      description: "Публичная операция. Неактивированный аккаунт и неверные учётные данные дают одинаковый 401 INVALID_CREDENTIALS. JWT действует 3600 секунд."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/LoginResponse"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "429":
+          "$ref": "#/components/responses/Error429"
+        "500":
+          "$ref": "#/components/responses/Error500"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/LoginRequest"
+  "/auth/me":
+    get:
+      operationId: "getMe"
+      summary: "Получить свой профиль"
+      tags:
+        - "Identity"
+      description: "Любой активированный пользователь."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/User"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "500":
+          "$ref": "#/components/responses/Error500"
+  "/rooms":
+    get:
+      operationId: "listRooms"
+      summary: "Получить комнаты для создания жильца"
+      tags:
+        - "Identity"
+      description: "Только ADMIN. Корпуса и комнаты предварительно заполняются; административного CRUD справочников нет."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Room"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "500":
+          "$ref": "#/components/responses/Error500"
+  "/categories":
+    get:
+      operationId: "listCategories"
+      summary: "Получить категории заявок"
+      tags:
+        - "Issues"
+      description: "RESIDENT и REVIEWER. ADMIN получает 403 FORBIDDEN. Источник списка - БД."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/Category"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "500":
+          "$ref": "#/components/responses/Error500"
+        "403":
+          "$ref": "#/components/responses/Error403"
+  "/issues":
+    post:
+      operationId: "createIssue"
+      summary: "Создать заявку"
+      tags:
+        - "Issues"
+      description: "Только RESIDENT. Автор определяется по проверенному JWT. Issues вызывает внутренний Identity API и получает комнату и корпус. Сведения о месте проживания фиксируются в Issue. Проверяется категория. Issue со статусом NEW и начальная History с published_at=NULL сохраняются одной транзакцией в Issues DB. При недоступном Identity возвращается 503; заявка не создаётся. RabbitMQ и Telegram не входят в путь HTTP-запроса. Повтор POST создаёт новую заявку."
+      responses:
+        "201":
+          description: "Создано"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Issue"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "500":
+          "$ref": "#/components/responses/Error500"
+        "503":
+          "$ref": "#/components/responses/Error503"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CreateIssueRequest"
+    get:
+      operationId: "listIssues"
+      summary: "Получить доступные заявки"
+      tags:
+        - "Issues"
+      description: "RESIDENT видит только свои заявки, REVIEWER - все. ADMIN не имеет доступа к заявкам: 403 FORBIDDEN. Каждая запись содержит полное описание, место и текущий статус для отображения в списке. Порядок createdAt DESC, id DESC. total считается после проверки доступа и фильтрации."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/IssuePage"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "500":
+          "$ref": "#/components/responses/Error500"
+        "403":
+          "$ref": "#/components/responses/Error403"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "NEW"
+              - "IN_PROGRESS"
+              - "CLOSED"
+        -
+          name: "categoryId"
+          in: "query"
+          schema:
+            type: "integer"
+            format: "int64"
+            minimum: 1
+            maximum: 9007199254740991
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 20
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 0
+            default: 0
+  "/issues/{issueId}/status":
+    patch:
+      operationId: "changeStatus"
+      summary: "Изменить статус"
+      tags:
+        - "Issues"
+      description: "Только REVIEWER; RESIDENT и ADMIN получают 403 FORBIDDEN. NEW -> IN_PROGRESS -> CLOSED. Блокировка Issue в транзакции. Если текущий статус уже равен status: 200 без нового события и истории. Иначе несовпадение expectedStatus: 409 STATUS_CONFLICT; запрещённый переход: 409 INVALID_STATUS_TRANSITION. Issue и новая History сохраняются атомарно в Issues DB. Identity и Notifications в этой транзакции не участвуют."
+      responses:
+        "200":
+          description: "Успешно"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Issue"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "404":
+          "$ref": "#/components/responses/Error404"
+        "409":
+          "$ref": "#/components/responses/Error409"
+        "500":
+          "$ref": "#/components/responses/Error500"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ChangeStatusRequest"
+      parameters:
+        -
+          name: "issueId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+            minimum: 1
+            maximum: 9007199254740991
+  "/internal/v1/users/{userId}/housing":
+    get:
+      operationId: "getResidentHousing"
+      summary: "Получить место проживания жильца"
+      tags:
+        - "Internal Identity"
+      servers:
+        -
+          url: "http://identity:8081"
+          description: "Внутренняя сеть сервисов"
+      security:
+        -
+          serviceAuth: []
+      description: "Вызывается Issues только при создании заявки. userId берётся из sub проверенного JWT. Identity проверяет активированную учётную запись, роль RESIDENT и наличие профиля. Возвращает текущую комнату и корпус. Неактивный пользователь или отсутствующий профиль: 403 FORBIDDEN; неизвестный userId: 404 USER_NOT_FOUND. Внутренний токен проверяется независимо от пользовательского JWT. Соединение защищается сетью и HTTPS при развёртывании."
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+            minimum: 1
+            maximum: 9007199254740991
+      responses:
+        "200":
+          description: "Место проживания"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ResidentHousing"
+              example:
+                userId: 12
+                roomId: 3
+                roomNumber: "203А"
+                blockId: 1
+                blockName: "Корпус 1"
+                blockAddress: "Университетская, 10"
+        "400":
+          "$ref": "#/components/responses/Error400"
+        "401":
+          "$ref": "#/components/responses/Error401"
+        "403":
+          "$ref": "#/components/responses/Error403"
+        "404":
+          "$ref": "#/components/responses/Error404"
+        "500":
+          "$ref": "#/components/responses/Error500"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "JWT"
+    serviceAuth:
+      type: "apiKey"
+      in: "header"
+      name: "X-Service-Token"
+      description: "Секрет межсервисного доступа Issues → Identity. Не выдаётся браузеру."
+  schemas:
+    Error:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "code"
+        - "message"
+      properties:
+        code:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        message:
+          type: "string"
+          minLength: 1
+          maxLength: 500
+    Role:
+      type: "string"
+      enum:
+        - "ADMIN"
+        - "RESIDENT"
+        - "REVIEWER"
+    IssueStatus:
+      type: "string"
+      enum:
+        - "NEW"
+        - "IN_PROGRESS"
+        - "CLOSED"
+    User:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "id"
+        - "login"
+        - "fullName"
+        - "role"
+        - "roomId"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        login:
+          type: "string"
+          minLength: 1
+          maxLength: 64
+        fullName:
+          type: "string"
+          minLength: 1
+          maxLength: 150
+        role:
+          "$ref": "#/components/schemas/Role"
+        roomId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          nullable: true
+          maximum: 9007199254740991
+    Room:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "id"
+        - "number"
+        - "blockId"
+        - "blockName"
+        - "blockAddress"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        number:
+          type: "string"
+          minLength: 1
+          maxLength: 20
+        blockId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        blockName:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        blockAddress:
+          type: "string"
+          minLength: 1
+          maxLength: 250
+    Category:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "id"
+        - "name"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        name:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+    ResidentUserInput:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "login"
+        - "fullName"
+        - "role"
+        - "roomId"
+      properties:
+        login:
+          type: "string"
+          minLength: 3
+          maxLength: 64
+          pattern: "^[a-z0-9._-]+$"
+        fullName:
+          type: "string"
+          minLength: 1
+          maxLength: 150
+        role:
+          type: "string"
+          enum:
+            - "RESIDENT"
+        roomId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+    StaffUserInput:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "login"
+        - "fullName"
+        - "role"
+      properties:
+        login:
+          type: "string"
+          minLength: 3
+          maxLength: 64
+          pattern: "^[a-z0-9._-]+$"
+        fullName:
+          type: "string"
+          minLength: 1
+          maxLength: 150
+        role:
+          type: "string"
+          enum:
+            - "ADMIN"
+            - "REVIEWER"
+    CreateUserRequest:
+      oneOf:
+        -
+          "$ref": "#/components/schemas/ResidentUserInput"
+        -
+          "$ref": "#/components/schemas/StaffUserInput"
+    ActivationCode:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "activationCode"
+        - "activationExpiresAt"
+      properties:
+        activationCode:
+          type: "string"
+          pattern: "^[A-Za-z0-9_-]{32}$"
+        activationExpiresAt:
+          type: "string"
+          format: "date-time"
+    CreatedUser:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "user"
+        - "activationCode"
+        - "activationExpiresAt"
+      properties:
+        user:
+          "$ref": "#/components/schemas/User"
+        activationCode:
+          type: "string"
+          pattern: "^[A-Za-z0-9_-]{32}$"
+        activationExpiresAt:
+          type: "string"
+          format: "date-time"
+    ActivateRequest:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "login"
+        - "activationCode"
+        - "newPassword"
+      properties:
+        login:
+          type: "string"
+          minLength: 3
+          maxLength: 64
+        activationCode:
+          type: "string"
+          pattern: "^[A-Za-z0-9_-]{32}$"
+        newPassword:
+          type: "string"
+          minLength: 12
+          maxLength: 128
+    LoginRequest:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "login"
+        - "password"
+      properties:
+        login:
+          type: "string"
+          minLength: 3
+          maxLength: 64
+        password:
+          type: "string"
+          minLength: 1
+          maxLength: 128
+    LoginResponse:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "accessToken"
+        - "tokenType"
+        - "expiresIn"
+        - "user"
+      properties:
+        accessToken:
+          type: "string"
+        tokenType:
+          type: "string"
+          enum:
+            - "Bearer"
+        expiresIn:
+          type: "integer"
+          enum:
+            - 3600
+        user:
+          "$ref": "#/components/schemas/User"
+    CreateIssueRequest:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "title"
+        - "description"
+        - "categoryId"
+        - "locationDetails"
+      properties:
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 150
+        description:
+          type: "string"
+          minLength: 1
+          maxLength: 5000
+        categoryId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        locationDetails:
+          type: "string"
+          minLength: 1
+          maxLength: 250
+    Issue:
+      type: "object"
+      required:
+        - "id"
+        - "residentId"
+        - "roomId"
+        - "categoryId"
+        - "status"
+        - "title"
+        - "description"
+        - "locationDetails"
+        - "createdAt"
+        - "updatedAt"
+        - "roomNumber"
+        - "blockId"
+        - "blockName"
+        - "blockAddress"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        residentId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        roomId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        categoryId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        status:
+          "$ref": "#/components/schemas/IssueStatus"
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 150
+        description:
+          type: "string"
+          minLength: 1
+          maxLength: 5000
+        locationDetails:
+          type: "string"
+          minLength: 1
+          maxLength: 250
+        createdAt:
+          type: "string"
+          format: "date-time"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+        roomNumber:
+          type: "string"
+          maxLength: 20
+        blockId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        blockName:
+          type: "string"
+          maxLength: 100
+        blockAddress:
+          type: "string"
+          maxLength: 250
+    IssuePage:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "items"
+        - "limit"
+        - "offset"
+        - "total"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Issue"
+        limit:
+          type: "integer"
+        offset:
+          type: "integer"
+        total:
+          type: "integer"
+          minimum: 0
+    ChangeStatusRequest:
+      type: "object"
+      additionalProperties: false
+      required:
+        - "status"
+        - "expectedStatus"
+      properties:
+        status:
+          type: "string"
+          enum:
+            - "IN_PROGRESS"
+            - "CLOSED"
+        expectedStatus:
+          "$ref": "#/components/schemas/IssueStatus"
+    Housing:
+      type: "object"
+      required:
+        - "roomId"
+        - "roomNumber"
+        - "blockId"
+        - "blockName"
+        - "blockAddress"
+      properties:
+        roomId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        roomNumber:
+          type: "string"
+          maxLength: 20
+        blockId:
+          type: "integer"
+          format: "int64"
+          minimum: 1
+          maximum: 9007199254740991
+        blockName:
+          type: "string"
+          maxLength: 100
+        blockAddress:
+          type: "string"
+          maxLength: 250
+    ResidentHousing:
+      allOf:
+        -
+          "$ref": "#/components/schemas/Housing"
+        -
+          type: "object"
+          required:
+            - "userId"
+          properties:
+            userId:
+              type: "integer"
+              format: "int64"
+              minimum: 1
+              maximum: 9007199254740991
+  responses:
+    Error400:
+      description: "VALIDATION_ERROR, INVALID_CATEGORY, INVALID_ROOM, INVALID_ACTIVATION_CODE"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Некорректные данные запроса"
+    Error401:
+      description: "UNAUTHORIZED, INVALID_CREDENTIALS"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "UNAUTHORIZED"
+            message: "Необходим вход в систему"
+    Error403:
+      description: "FORBIDDEN"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "FORBIDDEN"
+            message: "Недостаточно прав"
+    Error404:
+      description: "USER_NOT_FOUND, ISSUE_NOT_FOUND"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "USER_NOT_FOUND"
+            message: "Объект не найден"
+    Error409:
+      description: "LOGIN_ALREADY_EXISTS, USER_ALREADY_ACTIVATED, STATUS_CONFLICT, INVALID_STATUS_TRANSITION"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "LOGIN_ALREADY_EXISTS"
+            message: "Операция конфликтует с текущим состоянием"
+    Error429:
+      description: "RATE_LIMITED"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "RATE_LIMITED"
+            message: "Слишком много попыток, повторите позже"
+    Error500:
+      description: "INTERNAL_ERROR"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "INTERNAL_ERROR"
+            message: "Внутренняя ошибка сервера"
+    Error503:
+      description: "IDENTITY_UNAVAILABLE"
+      content:
+        "application/json":
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            code: "IDENTITY_UNAVAILABLE"
+            message: "Не удалось получить место проживания. Повторите позже."

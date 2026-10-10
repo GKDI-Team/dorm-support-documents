@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant FE as Frontend
+    participant I as Issues
+    participant ID as Identity
+    participant DB as Issues DB
+    participant P as Publisher
+    participant Q as RabbitMQ
+    participant N as Notifications
+    participant ND as Notifications DB
+    participant T as Telegram
+    FE->>I: POST /api/v1/issues + JWT
+    I->>ID: GET /internal/v1/users/{userId}/housing
+    ID-->>I: Room + block snapshot
+    I->>DB: Issue NEW + History; COMMIT
+    I-->>FE: 201 Issue
+    P->>DB: History WHERE published_at IS NULL
+    P->>Q: issue.created; eventId=History.id
+    Q-->>P: Confirm + route checked
+    P->>DB: Set History.published_at
+    Q-->>N: Event
+    N->>ND: Save / load Notification by eventId
+    N->>T: sendMessage
+    T-->>N: ok=true
+    N->>ND: Set Notification.sent_at
+    N->>Q: ACK

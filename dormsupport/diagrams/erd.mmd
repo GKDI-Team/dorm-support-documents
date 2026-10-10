@@ -1,0 +1,91 @@
+erDiagram
+    User ||--o{ ActivationCode : "1:N"
+    Block ||--o{ Room : "1:N"
+    Room ||--o{ Resident : "1:N"
+    User ||--o| Resident : "1:1"
+    Resident ||..o{ Issue : "1:N reference"
+    Room ||..o{ Issue : "1:N reference"
+    IssueCategory ||--o{ Issue : "1:N"
+    IssueStatus ||--o{ Issue : "1:N"
+    Issue ||--|{ IssueStatusHistory : "1:N"
+    User ||..o{ IssueStatusHistory : "1:N reference"
+    IssueStatus ||--o{ IssueStatusHistory : "1:N"
+    IssueStatus o|--o{ IssueStatusHistory : "1:N"
+    IssueStatusHistory ||..o| Notification : "1:1 reference"
+    User {
+        bigint id PK
+        string login UK
+        string full_name
+        string role
+        string password_hash
+        datetime activated_at
+        datetime created_at
+    }
+    ActivationCode {
+        uuid id PK
+        bigint user_id FK
+        string code_hash
+        datetime expires_at
+        datetime used_at
+        datetime revoked_at
+        datetime created_at
+    }
+    Block {
+        bigint id PK
+        string name UK
+        string address
+    }
+    Room {
+        bigint id PK
+        bigint block_id FK
+        string number
+    }
+    Resident {
+        bigint user_id PK,FK
+        bigint room_id FK
+    }
+    IssueCategory {
+        bigint id PK
+        string name UK
+    }
+    IssueStatus {
+        string code PK
+        string name
+    }
+    Issue {
+        bigint id PK
+        bigint resident_id
+        bigint room_id
+        bigint category_id FK
+        string status_code FK
+        string title
+        string description
+        string location_details
+        datetime created_at
+        datetime updated_at
+        string room_number
+        bigint block_id
+        string block_name
+        string block_address
+    }
+    IssueStatusHistory {
+        uuid id PK
+        bigint issue_id FK
+        string from_status FK
+        string to_status FK
+        bigint changed_by
+        datetime changed_at
+        datetime published_at
+    }
+    Notification {
+        uuid id PK
+        bigint issue_id
+        string event_type
+        json event_payload
+        datetime occurred_at
+        datetime received_at
+        datetime sent_at
+        datetime failed_at
+        int attempt_count
+        string last_error
+    }

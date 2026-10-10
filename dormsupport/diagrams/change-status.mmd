@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant FE as Frontend
+    participant I as Issues
+    participant DB as Issues DB
+    participant P as Publisher
+    participant Q as RabbitMQ
+    participant N as Notifications
+    FE->>I: PATCH status + expectedStatus
+    I->>DB: BEGIN; lock Issue; read status
+    alt Target already set
+      I->>DB: End transaction; release lock
+      I-->>FE: 200; no new History
+    else Conflict or invalid transition
+      I->>DB: ROLLBACK
+      I-->>FE: 409
+    else Valid transition
+      I->>DB: UPDATE Issue + INSERT History; COMMIT
+      I-->>FE: 200 Issue
+      P->>DB: Read unpublished History
+      P->>Q: issue.status_changed
+      Q-->>P: Confirm + route checked
+      P->>DB: Set History.published_at
+      Q-->>N: Event → own DB → Telegram → own DB → ACK
+    end

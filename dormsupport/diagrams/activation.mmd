@@ -1,0 +1,17 @@
+sequenceDiagram
+    actor A as Admin
+    participant FE as Frontend
+    participant I as Identity
+    participant DB as Identity DB
+    actor R as Resident
+    A->>FE: Create resident account
+    FE->>I: GET /rooms; POST /admin/users + JWT
+    I->>DB: User + Resident + ActivationCode, one transaction
+    I-->>FE: 201 User + one-time code
+    A-->>R: Personally hand login and activation code
+    R->>FE: Code + own password
+    FE->>I: POST /auth/activate
+    I->>DB: Validate code, set password hash, consume code atomically
+    I-->>FE: 204
+    FE->>I: POST /auth/login
+    I-->>FE: 200 JWT + User
