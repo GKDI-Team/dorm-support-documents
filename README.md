@@ -1,1 +1,3 @@
 # dorm-support-documents
+
+ссылка на Миро: https://miro.com/app/board/uXjVEff9gbU=/?inviteKey=eExYVEVjRC9ITzZBdjE5NTZYUzJERXBtQkk5TFBleWkraXlDWHdqdmNaeGtNZWhmSjRYejFGdWMremRtcWJSY0pKMnFNTHJSWStBcUJDWkhySDdxUUM3R3BUNEpaQ3YzYkdHWnlqbk5aay9DMCt6akg1SjVHTXZMSFhnTlFmWmpQdGo1ZEV3bUdPQWRZUHQzSGl6V2NBPT0hdjE%3D
