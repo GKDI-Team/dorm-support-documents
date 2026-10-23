@@ -1,4 +1,6 @@
-# DormSupport
+# DormSupport — target requirements
+
+> Важно: этот файл описывает расширенную целевую версию системы с JWT, activation code, Telegram и RabbitMQ. Для текущей разработки использовать `mvp.md`: там зафиксированы упрощённые требования первого этапа с Kafka и единым внешним портом Gateway `8080`.
 
 ## Назначение
 
