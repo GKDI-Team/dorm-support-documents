@@ -6,7 +6,7 @@
 
 | Поле | Тип и ограничение |
 |---|---|
-| id | bigint PK |
+| id | uuid PK |
 | login | varchar(64) UNIQUE |
 | full_name | varchar(150) |
 | role | ADMIN / RESIDENT / REVIEWER |
@@ -21,7 +21,7 @@
 | Поле | Тип и ограничение |
 |---|---|
 | id | uuid PK |
-| user_id | bigint FK User |
+| user_id | uuid FK User |
 | code_hash | text |
 | expires_at | timestamptz |
 | used_at | timestamptz NULL |
@@ -34,7 +34,7 @@
 
 | Поле | Тип и ограничение |
 |---|---|
-| id | bigint PK |
+| id | uuid PK |
 | name | varchar(100) UNIQUE |
 | address | varchar(250) |
 
@@ -45,7 +45,7 @@
 | Поле | Тип и ограничение |
 |---|---|
 | id | bigint PK |
-| block_id | bigint FK Block |
+| block_id | uuid FK Block |
 | number | varchar(20) |
 
 ## Resident
@@ -54,7 +54,7 @@
 
 | Поле | Тип и ограничение |
 |---|---|
-| user_id | bigint PK / FK User |
+| user_id | uuid PK / FK User |
 | room_id | bigint FK Room |
 
 ## IssueCategory
@@ -82,7 +82,7 @@
 | Поле | Тип и ограничение |
 |---|---|
 | id | bigint PK |
-| resident_id | bigint; ID-ссылка Resident.user_id |
+| resident_id | uuid; ID-ссылка Resident.user_id |
 | room_id | bigint; ID-ссылка Room |
 | category_id | bigint FK IssueCategory |
 | status_code | varchar(20) FK IssueStatus |
@@ -92,7 +92,7 @@
 | created_at | timestamptz |
 | updated_at | timestamptz |
 | room_number | varchar(20), снимок |
-| block_id | bigint; ID-ссылка Block |
+| block_id | uuid; ID-ссылка Block |
 | block_name | varchar(100), снимок |
 | block_address | varchar(250), снимок |
 
@@ -106,7 +106,7 @@
 | issue_id | bigint FK Issue |
 | from_status | varchar(20) FK IssueStatus NULL |
 | to_status | varchar(20) FK IssueStatus |
-| changed_by | bigint; ID-ссылка User |
+| changed_by | uuid; ID-ссылка User |
 | changed_at | timestamptz |
 | published_at | timestamptz NULL |
 

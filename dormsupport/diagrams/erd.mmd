@@ -13,7 +13,7 @@ erDiagram
     IssueStatus o|--o{ IssueStatusHistory : "1:N"
     IssueStatusHistory ||..o| Notification : "1:1 reference"
     User {
-        bigint id PK
+        uuid id PK
         string login UK
         string full_name
         string role
@@ -23,7 +23,7 @@ erDiagram
     }
     ActivationCode {
         uuid id PK
-        bigint user_id FK
+        uuid user_id FK
         string code_hash
         datetime expires_at
         datetime used_at
@@ -31,17 +31,17 @@ erDiagram
         datetime created_at
     }
     Block {
-        bigint id PK
+        uuid id PK
         string name UK
         string address
     }
     Room {
         bigint id PK
-        bigint block_id FK
+        uuid block_id FK
         string number
     }
     Resident {
-        bigint user_id PK,FK
+        uuid user_id PK,FK
         bigint room_id FK
     }
     IssueCategory {
@@ -54,7 +54,7 @@ erDiagram
     }
     Issue {
         bigint id PK
-        bigint resident_id
+        uuid resident_id
         bigint room_id
         bigint category_id FK
         string status_code FK
@@ -64,7 +64,7 @@ erDiagram
         datetime created_at
         datetime updated_at
         string room_number
-        bigint block_id
+        uuid block_id
         string block_name
         string block_address
     }
@@ -73,7 +73,7 @@ erDiagram
         bigint issue_id FK
         string from_status FK
         string to_status FK
-        bigint changed_by
+        uuid changed_by
         datetime changed_at
         datetime published_at
     }
