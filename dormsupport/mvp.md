@@ -60,12 +60,12 @@ Frontend, Swagger и API доступны через Gateway.
 
 ## Авторизация
 
-На первом этапе не используются JWT и activation code. Самостоятельной регистрации нет: аккаунты создаёт `ADMIN`.
+На первом этапе не используется activation code. Самостоятельной регистрации нет: аккаунты создаёт `ADMIN`.
 
-`POST /api/v1/auth/login` создаёт серверную сессию и возвращает `sessionId`. В следующих запросах frontend передаёт:
+`POST /api/v1/auth/login` проверяет логин и пароль и возвращает JWT `accessToken`. В следующих запросах frontend передаёт:
 
 ```text
-X-Session-Id: <session-id>
+Authorization: Bearer <access-token>
 ```
 
 ## Идентификаторы
