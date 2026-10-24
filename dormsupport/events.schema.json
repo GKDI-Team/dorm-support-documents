@@ -43,10 +43,8 @@
           ],
           "properties": {
             "issueId": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1,
-              "maximum": 9007199254740991
+              "type": "string",
+              "format": "uuid"
             },
             "categoryName": {
               "type": "string",
@@ -121,10 +119,8 @@
           ],
           "properties": {
             "issueId": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1,
-              "maximum": 9007199254740991
+              "type": "string",
+              "format": "uuid"
             },
             "oldStatus": {
               "type": "string",

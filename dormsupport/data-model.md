@@ -63,7 +63,7 @@
 
 | Поле | Тип и ограничение |
 |---|---|
-| id | bigint PK |
+| id | uuid PK |
 | name | varchar(100) UNIQUE |
 
 ## IssueStatus
@@ -81,17 +81,16 @@
 
 | Поле | Тип и ограничение |
 |---|---|
-| id | bigint PK |
+| id | uuid PK |
 | resident_id | uuid; ID-ссылка Resident.user_id |
-| room_id | bigint; ID-ссылка Room |
-| category_id | bigint FK IssueCategory |
+| room_number | varchar(20), снимок |
+| category_id | uuid FK IssueCategory |
 | status_code | varchar(20) FK IssueStatus |
 | title | varchar(150) |
 | description | varchar(5000) |
 | location_details | varchar(250) |
 | created_at | timestamptz |
 | updated_at | timestamptz |
-| room_number | varchar(20), снимок |
 | block_id | uuid; ID-ссылка Block |
 | block_name | varchar(100), снимок |
 | block_address | varchar(250), снимок |
@@ -103,7 +102,7 @@
 | Поле | Тип и ограничение |
 |---|---|
 | id | uuid PK |
-| issue_id | bigint FK Issue |
+| issue_id | uuid FK Issue |
 | from_status | varchar(20) FK IssueStatus NULL |
 | to_status | varchar(20) FK IssueStatus |
 | changed_by | uuid; ID-ссылка User |
@@ -117,7 +116,7 @@
 | Поле | Тип и ограничение |
 |---|---|
 | id | uuid PK, eventId |
-| issue_id | bigint; ID-ссылка Issue |
+| issue_id | uuid; ID-ссылка Issue |
 | event_type | issue.created / issue.status_changed |
 | event_payload | jsonb, полное исходное событие |
 | occurred_at | timestamptz, время события |

@@ -45,7 +45,7 @@ erDiagram
         bigint room_id FK
     }
     IssueCategory {
-        bigint id PK
+        uuid id PK
         string name UK
     }
     IssueStatus {
@@ -53,24 +53,23 @@ erDiagram
         string name
     }
     Issue {
-        bigint id PK
+        uuid id PK
         uuid resident_id
-        bigint room_id
-        bigint category_id FK
+        string room_number
+        uuid category_id FK
         string status_code FK
         string title
         string description
         string location_details
         datetime created_at
         datetime updated_at
-        string room_number
         uuid block_id
         string block_name
         string block_address
     }
     IssueStatusHistory {
         uuid id PK
-        bigint issue_id FK
+        uuid issue_id FK
         string from_status FK
         string to_status FK
         uuid changed_by
@@ -79,7 +78,7 @@ erDiagram
     }
     Notification {
         uuid id PK
-        bigint issue_id
+        uuid issue_id
         string event_type
         json event_payload
         datetime occurred_at
