@@ -1,11 +1,11 @@
 flowchart TB
     FE[Frontend] -->|HTTP /api/v1| Proxy[Reverse proxy]
-    Proxy -->|auth, admin, rooms| Identity[Identity Service]
+    Proxy -->|auth, admin, block| Identity[Identity Service]
     Proxy -->|issues, categories| Issues[Issues Service + Publisher]
     Identity --> IDB[(identity_db)]
     Issues --> ISDB[(issues_db)]
     Issues -->|Internal HTTP: housing| Identity
-    Issues -.->|Events| MQ[RabbitMQ]
+    Issues -.->|Events| MQ[Kafka]
     MQ -.-> N[Notification Service]
     N --> NDB[(notifications_db)]
     N -->|sendMessage| TG[Telegram group]
