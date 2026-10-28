@@ -37,7 +37,7 @@
             "status",
             "title",
             "descriptionPreview",
-            "blockName",
+            "block",
             "roomNumber",
             "locationDetails"
           ],
@@ -65,7 +65,7 @@
               "maxLength": 500,
               "description": "Описание целиком до 500 символов; иначе первые 499 символов и многоточие. Полное описание доступно в списке заявок."
             },
-            "blockName": {
+            "block": {
               "type": "string",
               "minLength": 1,
               "maxLength": 100

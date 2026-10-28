@@ -5,8 +5,8 @@ sequenceDiagram
     participant DB as Identity DB
     actor R as Resident
     A->>FE: Create resident account
-    FE->>I: GET /rooms; POST /admin/users + JWT
-    I->>DB: User + Resident + ActivationCode, one transaction
+    FE->>I: POST /admin/users + JWT (block, roomNumber)
+    I->>DB: User + ActivationCode, one transaction
     I-->>FE: 201 User + one-time code
     A-->>R: Personally hand login and activation code
     R->>FE: Code + own password

@@ -15,7 +15,7 @@
 ## События
 
 ```json
-{"eventId":"d25ed18f-15d7-4368-bace-c3f156e76c63","eventVersion":1,"type":"issue.created","occurredAt":"2026-10-10T08:00:00Z","data":{"issueId":124,"categoryName":"Электрика","status":"NEW","title":"Не работает свет","descriptionPreview":"Лампа не включается","blockName":"Корпус 1","roomNumber":"203А","locationDetails":"Кухня 3-го этажа"}}
+{"eventId":"d25ed18f-15d7-4368-bace-c3f156e76c63","eventVersion":1,"type":"issue.created","occurredAt":"2026-10-10T08:00:00Z","data":{"issueId":124,"categoryName":"Электрика","status":"NEW","title":"Не работает свет","descriptionPreview":"Лампа не включается","block":"11111111","roomNumber":"203А","locationDetails":"Кухня 3-го этажа"}}
 ```
 
 ```json
@@ -53,7 +53,7 @@ POST https://api.telegram.org/bot<BOT_TOKEN>/sendMessage:
 Статус: Создана → В работе
 ```
 
-parse_mode не задаётся. Формат места: blockName и locationDetails; roomNumber выводится отдельно как комната жильца. Статусы отображаются как «Создана», «В работе», «Закрыта». Сообщение строится только из ограниченных полей события; текст помещается в лимит Telegram. Токен скрывается в логах, включая URL.
+parse_mode не задаётся. Формат места: block и locationDetails; roomNumber выводится отдельно как комната жильца. Статусы отображаются как «Создана», «В работе», «Закрыта». Сообщение строится только из ограниченных полей события; текст помещается в лимит Telegram. Токен скрывается в логах, включая URL.
 
 ## Повторы и DLQ
 

@@ -10,7 +10,7 @@ sequenceDiagram
     participant T as Telegram
     FE->>I: POST /api/v1/issues + JWT
     I->>ID: GET /internal/v1/users/{userId}/housing
-    ID-->>I: Room + block snapshot
+    ID-->>I: User profile with block + roomNumber
     I->>DB: Issue NEW + History; COMMIT
     I-->>FE: 201 Issue
     P->>DB: History WHERE published_at IS NULL

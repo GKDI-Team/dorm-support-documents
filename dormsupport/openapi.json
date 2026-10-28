@@ -38,7 +38,7 @@
         "tags": [
           "Identity"
         ],
-        "description": "Только ADMIN. RESIDENT требует roomId, для сотрудников roomId запрещён. User, Resident и ActivationCode создаются одной транзакцией. Код активации действует 24 часа; администратор передаёт его лично.",
+        "description": "Только ADMIN. Для RESIDENT обязательны строковые block и roomNumber; для сотрудников они могут отсутствовать. User и ActivationCode создаются одной транзакцией. Код активации действует 24 часа; администратор передаёт его лично.",
         "responses": {
           "201": {
             "description": "Создано",
@@ -232,40 +232,6 @@
           },
           "401": {
             "$ref": "#/components/responses/Error401"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        }
-      }
-    },
-    "/rooms": {
-      "get": {
-        "operationId": "listRooms",
-        "summary": "Получить комнаты для создания жильца",
-        "tags": [
-          "Identity"
-        ],
-        "description": "Только ADMIN. Корпуса и комнаты предварительно заполняются; административного CRUD справочников нет.",
-        "responses": {
-          "200": {
-            "description": "Успешно",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Room"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
           },
           "500": {
             "$ref": "#/components/responses/Error500"
@@ -534,11 +500,8 @@
                 },
                 "example": {
                   "userId": 12,
-                  "roomId": 3,
                   "roomNumber": "203А",
-                  "blockId": 1,
-                  "blockName": "Корпус 1",
-                  "blockAddress": "Университетская, 10"
+                  "block": "11111111"
                 }
               }
             }
@@ -621,7 +584,7 @@
           "login",
           "fullName",
           "role",
-          "roomId"
+          "block"
         ],
         "properties": {
           "id": {
@@ -643,52 +606,15 @@
           "role": {
             "$ref": "#/components/schemas/Role"
           },
-          "roomId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "nullable": true,
-            "maximum": 9007199254740991
-          }
-        }
-      },
-      "Room": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "number",
-          "blockId",
-          "blockName",
-          "blockAddress"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
-          "number": {
+          "block": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 20
+            "maxLength": 50,
+            "nullable": true
           },
-          "blockId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
-          "blockName": {
+          "roomNumber": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 100
-          },
-          "blockAddress": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 250
+            "maxLength": 20,
+            "nullable": true
           }
         }
       },
@@ -720,7 +646,8 @@
           "login",
           "fullName",
           "role",
-          "roomId"
+          "block",
+          "roomNumber"
         ],
         "properties": {
           "login": {
@@ -740,11 +667,13 @@
               "RESIDENT"
             ]
           },
-          "roomId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
+          "block": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "roomNumber": {
+            "type": "string",
+            "maxLength": 20
           }
         }
       },
@@ -940,7 +869,6 @@
         "required": [
           "id",
           "residentId",
-          "roomId",
           "categoryId",
           "status",
           "title",
@@ -949,9 +877,7 @@
           "createdAt",
           "updatedAt",
           "roomNumber",
-          "blockId",
-          "blockName",
-          "blockAddress"
+          "block"
         ],
         "properties": {
           "id": {
@@ -961,12 +887,6 @@
             "maximum": 9007199254740991
           },
           "residentId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
-          "roomId": {
             "type": "integer",
             "format": "int64",
             "minimum": 1,
@@ -1008,19 +928,9 @@
             "type": "string",
             "maxLength": 20
           },
-          "blockId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
-          "blockName": {
+          "block": {
             "type": "string",
-            "maxLength": 100
-          },
-          "blockAddress": {
-            "type": "string",
-            "maxLength": 250
+            "maxLength": 50
           }
         }
       },
@@ -1075,36 +985,17 @@
       "Housing": {
         "type": "object",
         "required": [
-          "roomId",
           "roomNumber",
-          "blockId",
-          "blockName",
-          "blockAddress"
+          "block"
         ],
         "properties": {
-          "roomId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
           "roomNumber": {
             "type": "string",
             "maxLength": 20
           },
-          "blockId": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1,
-            "maximum": 9007199254740991
-          },
-          "blockName": {
+          "block": {
             "type": "string",
-            "maxLength": 100
-          },
-          "blockAddress": {
-            "type": "string",
-            "maxLength": 250
+            "maxLength": 50
           }
         }
       },

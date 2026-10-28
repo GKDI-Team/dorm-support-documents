@@ -1,10 +1,6 @@
 erDiagram
     User ||--o{ ActivationCode : "1:N"
-    Block ||--o{ Room : "1:N"
-    Room ||--o{ Resident : "1:N"
-    User ||--o| Resident : "1:1"
-    Resident ||..o{ Issue : "1:N reference"
-    Room ||..o{ Issue : "1:N reference"
+    User ||..o{ Issue : "1:N reference"
     IssueCategory ||--o{ Issue : "1:N"
     IssueStatus ||--o{ Issue : "1:N"
     Issue ||--|{ IssueStatusHistory : "1:N"
@@ -18,6 +14,8 @@ erDiagram
         string full_name
         string role
         string password_hash
+        string block
+        string room_number
         datetime activated_at
         datetime created_at
     }
@@ -29,20 +27,6 @@ erDiagram
         datetime used_at
         datetime revoked_at
         datetime created_at
-    }
-    Block {
-        uuid id PK
-        string name UK
-        string address
-    }
-    Room {
-        bigint id PK
-        uuid block_id FK
-        string number
-    }
-    Resident {
-        uuid user_id PK,FK
-        bigint room_id FK
     }
     IssueCategory {
         uuid id PK
@@ -63,9 +47,7 @@ erDiagram
         string location_details
         datetime created_at
         datetime updated_at
-        uuid block_id
-        string block_name
-        string block_address
+        string block
     }
     IssueStatusHistory {
         uuid id PK
