@@ -1,72 +1,109 @@
 erDiagram
-    User ||--o{ ActivationCode : "1:N"
-    User ||..o{ Issue : "1:N reference"
-    IssueCategory ||--o{ Issue : "1:N"
-    IssueStatus ||--o{ Issue : "1:N"
-    Issue ||--|{ IssueStatusHistory : "1:N"
-    User ||..o{ IssueStatusHistory : "1:N reference"
-    IssueStatus ||--o{ IssueStatusHistory : "1:N"
-    IssueStatus o|--o{ IssueStatusHistory : "1:N"
-    IssueStatusHistory ||..o| Notification : "1:1 reference"
-    User {
+    %% identity_db
+    blocks ||--o{ rooms : "1:N"
+    rooms o|--o{ users : "1:N"
+    users o|--o{ auth_audit_log : "1:N"
+
+    %% issues_db
+    issue_categories ||--o{ issues : "1:N"
+    issue_statuses ||--o{ issues : "1:N"
+    issues ||--o{ issue_status_history : "1:N"
+    issue_statuses o|--o{ issue_status_history : "from_status_id"
+    issue_statuses ||--o{ issue_status_history : "to_status_id"
+    issues ||--o{ issue_events : "1:N"
+
+    %% Логические ссылки между базами, без SQL FK
+    users ||..o{ issues : "1:N resident_id"
+    users ||..o{ issue_status_history : "1:N changed_by"
+    issue_events ||..o{ notifications : "1:N event_id"
+
+    blocks {
         uuid id PK
-        string login UK
-        string full_name
-        string role
-        string password_hash
-        string block
-        string room_number
-        datetime activated_at
-        datetime created_at
+        varchar_50 name UK
+        varchar_255 address
     }
-    ActivationCode {
+    rooms {
         uuid id PK
-        uuid user_id FK
-        string code_hash
-        datetime expires_at
-        datetime used_at
-        datetime revoked_at
-        datetime created_at
+        uuid block_id FK
+        varchar_20 number
     }
-    IssueCategory {
+    users {
         uuid id PK
-        string name UK
+        varchar_64 login UK
+        text password_hash
+        varchar_150 full_name
+        varchar_20 role
+        uuid room_id FK "nullable"
+        timestamptz created_at
     }
-    IssueStatus {
-        string code PK
-        string name
-    }
-    Issue {
+    auth_audit_log {
         uuid id PK
-        uuid resident_id
-        string room_number
+        uuid user_id FK "nullable"
+        varchar_64 login
+        varchar_40 action
+        boolean success
+        text failure_reason "nullable"
+        timestamptz created_at
+    }
+    issue_statuses {
+        uuid id PK
+        varchar_30 code UK
+        varchar_50 name
+        text description
+    }
+    issue_categories {
+        uuid id PK
+        varchar_80 name UK
+        text description
+    }
+    issues {
+        uuid id PK
+        uuid resident_id "логическая ссылка на users.id"
+        varchar_50 block
+        varchar_20 room_number
+        varchar_150 title
+        text description
         uuid category_id FK
-        string status_code FK
-        string title
-        string description
-        string location_details
-        datetime created_at
-        datetime updated_at
-        string block
+        uuid status_id FK
+        varchar_250 location_details
+        timestamptz created_at
+        timestamptz updated_at
     }
-    IssueStatusHistory {
+    issue_status_history {
         uuid id PK
         uuid issue_id FK
-        string from_status FK
-        string to_status FK
-        uuid changed_by
-        datetime changed_at
-        datetime published_at
+        uuid from_status_id FK "nullable"
+        uuid to_status_id FK
+        uuid changed_by "логическая ссылка на users.id"
+        timestamptz changed_at
     }
-    Notification {
-        uuid id PK
+    issue_events {
+        uuid id
+        uuid event_id
         uuid issue_id
-        string event_type
-        json event_payload
-        datetime occurred_at
-        datetime received_at
-        datetime sent_at
-        datetime failed_at
-        int attempt_count
-        string last_error
+        varchar event_type
+        text payload
+        varchar status
+        timestamptz created_at
+        timestamptz published_at
+        text last_error
+    }
+    notifications {
+        uuid id PK
+        uuid event_id "логическая ссылка на issue_events.event_id"
+        varchar event_type
+        uuid issue_id
+        varchar status
+        varchar previous_status
+        timestamptz occurred_at
+        varchar title
+        text description_preview
+        varchar block
+        varchar room_number
+        varchar location_details
+        varchar category_name
+        varchar delivery_status
+        text delivery_error
+        timestamptz sent_at
+        timestamptz created_at
     }
