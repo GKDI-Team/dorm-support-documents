@@ -13,3 +13,4 @@
 - запуск выполняется командой `docker compose up --build`.
 
 ссылка на Миро: https://miro.com/app/board/uXjVEff9gbU=/?inviteKey=eExYVEVjRC9ITzZBdjE5NTZYUzJERXBtQkk5TFBleWkraXlDWHdqdmNaeGtNZWhmSjRYejFGdWMremRtcWJSY0pKMnFNTHJSWStBcUJDWkhySDdxUUM3R3BUNEpaQ3YzYkdHWnlqbk5aay9DMCt6akg1SjVHTXZMSFhnTlFmWmpQdGo1ZEV3bUdPQWRZUHQzSGl6V2NBPT0hdjE%3D
+ссылка на макеты Figma: https://www.figma.com/design/ce6491NYRBatsPe8xLtrJp/Untitled?node-id=0-1&m=dev&t=7H5a8Vx2Pd2mKuKC-1
