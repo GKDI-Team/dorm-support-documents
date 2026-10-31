@@ -1,8 +1,8 @@
 openapi: "3.0.3"
 info:
   title: "DormSupport API"
-  version: "1.3.0"
-  description: "API системы заявок в общежитии. 10 публичных операций и 1 внутренняя операция Identity. JSON camelCase; ошибки {code,message}; даты UTC ISO 8601. JWT Bearer действует 3600 секунд. Каждый сервис имеет собственную БД."
+  version: "1.3.1"
+  description: "API системы заявок в общежитии. Учётные записи создаёт ADMIN с логином и паролем; отдельная активация не требуется. JSON camelCase; ошибки {code,message}; даты UTC ISO 8601. JWT Bearer действует 3600 секунд. Каждый сервис имеет собственную БД."
 servers:
   -
     url: "http://localhost:8080/api/v1"
@@ -13,7 +13,7 @@ security:
 tags:
   -
     name: "Identity"
-    description: "Учётные записи, активация и проживание"
+    description: "Учётные записи, вход и проживание"
   -
     name: "Issues"
     description: "Заявки, категории и история статусов"
@@ -27,14 +27,14 @@ paths:
       summary: "Создать пользователя"
       tags:
         - "Identity"
-      description: "Только ADMIN. Для RESIDENT обязательны строковые block и roomNumber; для сотрудников они могут отсутствовать. User и ActivationCode создаются одной транзакцией. Код активации действует 24 часа; администратор передаёт его лично."
+      description: "Только ADMIN. Администратор задаёт логин и пароль и передаёт их пользователю. Допустимые роли нового пользователя: RESIDENT и REVIEWER. Строковые block и roomNumber обязательны для обеих ролей. Сохраняется хеш пароля; в ответе возвращается профиль без пароля."
       responses:
         "201":
           description: "Создано"
           content:
             "application/json":
               schema:
-                "$ref": "#/components/schemas/CreatedUser"
+                "$ref": "#/components/schemas/User"
         "400":
           "$ref": "#/components/responses/Error400"
         "401":
@@ -51,72 +51,13 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/CreateUserRequest"
-  "/admin/users/{userId}/activation-code":
-    post:
-      operationId: "reissueActivationCode"
-      summary: "Перевыпустить код активации"
-      tags:
-        - "Identity"
-      description: "Только ADMIN, только для ещё не активированной учётной записи. Старый код сразу становится недействительным. Срок нового кода 24 часа. Восстановление пароля активного аккаунта не входит в контракт."
-      responses:
-        "200":
-          description: "Успешно"
-          content:
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/ActivationCode"
-        "400":
-          "$ref": "#/components/responses/Error400"
-        "401":
-          "$ref": "#/components/responses/Error401"
-        "403":
-          "$ref": "#/components/responses/Error403"
-        "404":
-          "$ref": "#/components/responses/Error404"
-        "409":
-          "$ref": "#/components/responses/Error409"
-        "500":
-          "$ref": "#/components/responses/Error500"
-      parameters:
-        -
-          name: "userId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-            minimum: 1
-            maximum: 9007199254740991
-  "/auth/activate":
-    post:
-      operationId: "activateAccount"
-      summary: "Активировать аккаунт"
-      tags:
-        - "Identity"
-      description: "Публичная операция. Неверный, истёкший или уже использованный код: 400 INVALID_ACTIVATION_CODE. Проверка, запись хеша пароля и погашение кода атомарны."
-      responses:
-        "204":
-          description: "Успешно, без тела ответа"
-        "400":
-          "$ref": "#/components/responses/Error400"
-        "429":
-          "$ref": "#/components/responses/Error429"
-        "500":
-          "$ref": "#/components/responses/Error500"
-      security: []
-      requestBody:
-        required: true
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ActivateRequest"
   "/auth/login":
     post:
       operationId: "login"
       summary: "Войти по логину и паролю"
       tags:
         - "Identity"
-      description: "Публичная операция. Неактивированный аккаунт и неверные учётные данные дают одинаковый 401 INVALID_CREDENTIALS. JWT действует 3600 секунд."
+      description: "Публичная операция. Вход по логину и паролю, заданным администратором. Неверные учётные данные: 401 INVALID_CREDENTIALS. Возвращаются JWT и профиль пользователя. JWT действует 3600 секунд."
       responses:
         "200":
           description: "Успешно"
@@ -128,8 +69,6 @@ paths:
           "$ref": "#/components/responses/Error400"
         "401":
           "$ref": "#/components/responses/Error401"
-        "429":
-          "$ref": "#/components/responses/Error429"
         "500":
           "$ref": "#/components/responses/Error500"
       security: []
@@ -145,7 +84,7 @@ paths:
       summary: "Получить свой профиль"
       tags:
         - "Identity"
-      description: "Любой активированный пользователь."
+      description: "Любой пользователь с действительным JWT."
       responses:
         "200":
           description: "Успешно"
@@ -157,6 +96,17 @@ paths:
           "$ref": "#/components/responses/Error401"
         "500":
           "$ref": "#/components/responses/Error500"
+  "/auth/logout":
+    post:
+      operationId: "logout"
+      summary: "Выйти из аккаунта"
+      tags:
+        - "Identity"
+      description: "Возвращает 204. Клиент удаляет JWT локально; сервер не отзывает выданный токен."
+      security: []
+      responses:
+        "204":
+          description: "Успешно, без тела ответа"
   "/categories":
     get:
       operationId: "listCategories"
@@ -185,7 +135,7 @@ paths:
       summary: "Создать заявку"
       tags:
         - "Issues"
-      description: "Только RESIDENT. Автор определяется по проверенному JWT. Issues вызывает внутренний Identity API и получает комнату и корпус. Сведения о месте проживания фиксируются в Issue. Проверяется категория. Issue со статусом NEW и начальная History с published_at=NULL сохраняются одной транзакцией в Issues DB. При недоступном Identity возвращается 503; заявка не создаётся. RabbitMQ и Telegram не входят в путь HTTP-запроса. Повтор POST создаёт новую заявку."
+      description: "Только RESIDENT. Автор определяется по проверенному JWT. Issues вызывает внутренний Identity API и получает комнату и корпус. Сведения о месте проживания фиксируются в Issue. Проверяется категория. Issue со статусом NEW и начальная History с published_at=NULL сохраняются одной транзакцией в Issues DB. При недоступном Identity возвращается 503; заявка не создаётся. После фиксации транзакции событие отправляется в Kafka. Повтор POST создаёт новую заявку."
       responses:
         "201":
           description: "Создано"
@@ -318,7 +268,7 @@ paths:
       security:
         -
           serviceAuth: []
-      description: "Вызывается Issues только при создании заявки. userId берётся из sub проверенного JWT. Identity проверяет активированную учётную запись, роль RESIDENT и наличие профиля. Возвращает текущую комнату и корпус. Неактивный пользователь или отсутствующий профиль: 403 FORBIDDEN; неизвестный userId: 404 USER_NOT_FOUND. Внутренний токен проверяется независимо от пользовательского JWT. Соединение защищается сетью и HTTPS при развёртывании."
+      description: "Вызывается Issues только при создании заявки. userId берётся из sub проверенного JWT. Identity проверяет роль RESIDENT и наличие профиля. Возвращает текущую комнату и корпус. Отсутствующий профиль: 403 FORBIDDEN; неизвестный userId: 404 USER_NOT_FOUND. Внутренний токен проверяется независимо от пользовательского JWT. Соединение защищается сетью и HTTPS при развёртывании."
       parameters:
         -
           name: "userId"
@@ -397,13 +347,11 @@ components:
         - "login"
         - "fullName"
         - "role"
-        - "block"
+        - "createdAt"
       properties:
         id:
-          type: "integer"
-          format: "int64"
-          minimum: 1
-          maximum: 9007199254740991
+          type: "string"
+          format: "uuid"
         login:
           type: "string"
           minLength: 1
@@ -422,6 +370,9 @@ components:
           type: "string"
           maxLength: 20
           nullable: true
+        createdAt:
+          type: "string"
+          format: "date-time"
     Category:
       type: "object"
       additionalProperties: false
@@ -438,11 +389,12 @@ components:
           type: "string"
           minLength: 1
           maxLength: 100
-    ResidentUserInput:
+    CreateUserRequest:
       type: "object"
       additionalProperties: false
       required:
         - "login"
+        - "password"
         - "fullName"
         - "role"
         - "block"
@@ -452,7 +404,12 @@ components:
           type: "string"
           minLength: 3
           maxLength: 64
-          pattern: "^[a-z0-9._-]+$"
+        password:
+          type: "string"
+          format: "password"
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
         fullName:
           type: "string"
           minLength: 1
@@ -461,88 +418,15 @@ components:
           type: "string"
           enum:
             - "RESIDENT"
+            - "REVIEWER"
         block:
           type: "string"
+          minLength: 1
           maxLength: 50
         roomNumber:
           type: "string"
-          maxLength: 20
-    StaffUserInput:
-      type: "object"
-      additionalProperties: false
-      required:
-        - "login"
-        - "fullName"
-        - "role"
-      properties:
-        login:
-          type: "string"
-          minLength: 3
-          maxLength: 64
-          pattern: "^[a-z0-9._-]+$"
-        fullName:
-          type: "string"
           minLength: 1
-          maxLength: 150
-        role:
-          type: "string"
-          enum:
-            - "ADMIN"
-            - "REVIEWER"
-    CreateUserRequest:
-      oneOf:
-        -
-          "$ref": "#/components/schemas/ResidentUserInput"
-        -
-          "$ref": "#/components/schemas/StaffUserInput"
-    ActivationCode:
-      type: "object"
-      additionalProperties: false
-      required:
-        - "activationCode"
-        - "activationExpiresAt"
-      properties:
-        activationCode:
-          type: "string"
-          pattern: "^[A-Za-z0-9_-]{32}$"
-        activationExpiresAt:
-          type: "string"
-          format: "date-time"
-    CreatedUser:
-      type: "object"
-      additionalProperties: false
-      required:
-        - "user"
-        - "activationCode"
-        - "activationExpiresAt"
-      properties:
-        user:
-          "$ref": "#/components/schemas/User"
-        activationCode:
-          type: "string"
-          pattern: "^[A-Za-z0-9_-]{32}$"
-        activationExpiresAt:
-          type: "string"
-          format: "date-time"
-    ActivateRequest:
-      type: "object"
-      additionalProperties: false
-      required:
-        - "login"
-        - "activationCode"
-        - "newPassword"
-      properties:
-        login:
-          type: "string"
-          minLength: 3
-          maxLength: 64
-        activationCode:
-          type: "string"
-          pattern: "^[A-Za-z0-9_-]{32}$"
-        newPassword:
-          type: "string"
-          minLength: 12
-          maxLength: 128
+          maxLength: 20
     LoginRequest:
       type: "object"
       additionalProperties: false
@@ -556,27 +440,19 @@ components:
           maxLength: 64
         password:
           type: "string"
-          minLength: 1
+          format: "password"
+          writeOnly: true
+          minLength: 6
           maxLength: 128
     LoginResponse:
       type: "object"
       additionalProperties: false
       required:
         - "accessToken"
-        - "tokenType"
-        - "expiresIn"
         - "user"
       properties:
         accessToken:
           type: "string"
-        tokenType:
-          type: "string"
-          enum:
-            - "Bearer"
-        expiresIn:
-          type: "integer"
-          enum:
-            - 3600
         user:
           "$ref": "#/components/schemas/User"
     CreateIssueRequest:
@@ -723,7 +599,7 @@ components:
               maximum: 9007199254740991
   responses:
     Error400:
-      description: "VALIDATION_ERROR, INVALID_CATEGORY, INVALID_ROOM, INVALID_ACTIVATION_CODE"
+      description: "VALIDATION_ERROR, INVALID_USER_ROLE, INVALID_CATEGORY, INVALID_ROOM"
       content:
         "application/json":
           schema:
@@ -759,7 +635,7 @@ components:
             code: "USER_NOT_FOUND"
             message: "Объект не найден"
     Error409:
-      description: "LOGIN_ALREADY_EXISTS, USER_ALREADY_ACTIVATED, STATUS_CONFLICT, INVALID_STATUS_TRANSITION"
+      description: "LOGIN_ALREADY_EXISTS, STATUS_CONFLICT, INVALID_STATUS_TRANSITION"
       content:
         "application/json":
           schema:
@@ -767,15 +643,6 @@ components:
           example:
             code: "LOGIN_ALREADY_EXISTS"
             message: "Операция конфликтует с текущим состоянием"
-    Error429:
-      description: "RATE_LIMITED"
-      content:
-        "application/json":
-          schema:
-            "$ref": "#/components/schemas/Error"
-          example:
-            code: "RATE_LIMITED"
-            message: "Слишком много попыток, повторите позже"
     Error500:
       description: "INTERNAL_ERROR"
       content:
